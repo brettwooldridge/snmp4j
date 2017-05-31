@@ -188,7 +188,7 @@ public class PDUv1 extends PDU {
     }
     // rest read count
     int startPos = (int)inputStream.getPosition();
-    variableBindings = new Vector<VariableBinding>();
+    variableBindings = new ArrayList<VariableBinding>();
     while (inputStream.getPosition() - startPos < vbLength) {
       VariableBinding vb = new VariableBinding();
       vb.decodeBER(inputStream);

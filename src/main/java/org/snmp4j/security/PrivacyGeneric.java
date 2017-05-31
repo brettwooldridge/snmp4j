@@ -24,7 +24,7 @@ public abstract class PrivacyGeneric implements PrivacyProtocol {
   protected int keyBytes;
   protected Salt salt;
   protected CipherPool cipherPool;
-  protected int initVectorLength;
+  protected int initArrayListLength;
 
 
   protected Cipher doInit(byte[] encryptionKey, byte[] initVect) throws
@@ -98,7 +98,7 @@ public abstract class PrivacyGeneric implements PrivacyProtocol {
       if (alg == null) {
         alg = Cipher.getInstance(protocolId);
       }
-      byte[] initVect = new byte[initVectorLength];
+      byte[] initVect = new byte[initArrayListLength];
       byte[] encryptionKey = new byte[keyBytes];
       SecretKeySpec key =
           new SecretKeySpec(encryptionKey, 0, keyBytes, protocolClass);

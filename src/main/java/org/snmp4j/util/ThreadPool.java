@@ -35,7 +35,7 @@ import java.util.*;
  */
 public class ThreadPool implements WorkerPool {
 
-  protected Vector<TaskManager> taskManagers;
+  protected ArrayList<TaskManager> taskManagers;
   protected String name = "ThreadPool";
   protected volatile boolean stop = false;
   protected boolean respawnThreads = false;
@@ -49,7 +49,7 @@ public class ThreadPool implements WorkerPool {
 
   protected void setup(String name, int size) {
     this.name = name;
-    taskManagers = new Vector<TaskManager>(size);
+    taskManagers = new ArrayList<TaskManager>(size);
     for (int i=0; i<size; i++) {
       TaskManager tm = new TaskManager(getTaskManagerName(name, i));
       taskManagers.add(tm);

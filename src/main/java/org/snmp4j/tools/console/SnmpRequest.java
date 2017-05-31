@@ -85,7 +85,7 @@ public class SnmpRequest implements CommandResponder, PDUFactory {
   int maxRepetitions = 10;
   int nonRepeaters = 0;
   int maxSizeResponsePDU = 65535;
-  Vector<VariableBinding> vbs = new Vector<VariableBinding>();
+  ArrayList<VariableBinding> vbs = new ArrayList<VariableBinding>();
   File snapshotFile;
 
   protected int operation = DEFAULT;
@@ -112,7 +112,7 @@ public class SnmpRequest implements CommandResponder, PDUFactory {
     else if (operation != SNAPSHOT_DUMP) {
       checkOptions();
       address = getAddress(args[paramStart++]);
-      Vector<VariableBinding> vbs = getVariableBindings(args, paramStart);
+      ArrayList<VariableBinding> vbs = getVariableBindings(args, paramStart);
       checkTrapVariables(vbs);
       if (vbs.size() > 0) {
         this.vbs = vbs;
@@ -128,7 +128,7 @@ public class SnmpRequest implements CommandResponder, PDUFactory {
     return version;
   }
 
-  public Vector<? extends VariableBinding> getVbs() {
+  public ArrayList<? extends VariableBinding> getVbs() {
     return vbs;
   }
 
@@ -237,7 +237,7 @@ public class SnmpRequest implements CommandResponder, PDUFactory {
     }
   }
 
-  private void checkTrapVariables(Vector<VariableBinding> vbs) {
+  private void checkTrapVariables(ArrayList<VariableBinding> vbs) {
     if ((pduType == PDU.INFORM) ||
         (pduType == PDU.TRAP)) {
       if ((vbs.size() == 0) ||
@@ -483,8 +483,8 @@ public class SnmpRequest implements CommandResponder, PDUFactory {
   }
 
 
-  private static Vector<VariableBinding> getVariableBindings(String[] args, int position) {
-    Vector<VariableBinding> v = new Vector<VariableBinding>(args.length-position+1);
+  private static ArrayList<VariableBinding> getVariableBindings(String[] args, int position) {
+    ArrayList<VariableBinding> v = new ArrayList<VariableBinding>(args.length-position+1);
     for (int i=position; i<args.length; i++) {
       String oid = args[i];
       char type = 'i';
@@ -1355,7 +1355,7 @@ public class SnmpRequest implements CommandResponder, PDUFactory {
     this.version = version;
   }
 
-  public void setVbs(Vector<VariableBinding> vbs) {
+  public void setVbs(ArrayList<VariableBinding> vbs) {
     this.vbs = vbs;
   }
 

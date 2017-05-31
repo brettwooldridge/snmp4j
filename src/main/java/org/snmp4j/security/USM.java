@@ -56,7 +56,7 @@ public class USM extends SNMPv3SecurityModel {
   private boolean engineDiscoveryEnabled = true;
 
   private SecurityProtocols securityProtocols;
-  private transient Vector<UsmUserListener> usmUserListeners;
+  private transient ArrayList<UsmUserListener> usmUserListeners;
   private CounterSupport counterSupport;
 
   /**
@@ -934,7 +934,7 @@ public class USM extends SNMPv3SecurityModel {
       userTable.clear();
     }
     else {
-      Vector<UsmUserEntry> v = new Vector<UsmUserEntry>(users.length);
+      ArrayList<UsmUserEntry> v = new ArrayList<UsmUserEntry>(users.length);
       for (UsmUser user : users) {
         UsmUserEntry entry =
             new UsmUserEntry(user.getSecurityName(),
@@ -1122,7 +1122,7 @@ public class USM extends SNMPv3SecurityModel {
    */
   public synchronized void addUsmUserListener(UsmUserListener l) {
     if (usmUserListeners == null) {
-      usmUserListeners = new Vector<UsmUserListener>(2);
+      usmUserListeners = new ArrayList<UsmUserListener>(2);
     }
     if (!usmUserListeners.contains(l)) {
       usmUserListeners.add(l);
@@ -1149,7 +1149,7 @@ public class USM extends SNMPv3SecurityModel {
    */
   protected void fireUsmUserChange(UsmUserEvent e) {
     if (usmUserListeners != null) {
-      Vector<UsmUserListener> listeners = usmUserListeners;
+      ArrayList<UsmUserListener> listeners = usmUserListeners;
       int count = listeners.size();
       for (UsmUserListener listener : listeners) {
         listener.usmUserChange(e);

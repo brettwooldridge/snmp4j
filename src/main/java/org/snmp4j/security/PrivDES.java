@@ -52,7 +52,7 @@ public class PrivDES extends PrivacyGeneric {
   private static final String PROTOCOL_ID = "DES/CBC/NoPadding";
   private static final String PROTOCOL_CLASS = "DES";
   private static final int DECRYPT_PARAMS_LENGTH = 8;
-  private static final int INIT_VECTOR_LENGTH = 8;
+  private static final int INIT_ArrayList_LENGTH = 8;
   private static final int INPUT_KEY_LENGTH = 16;
   private static final int KEY_LENGTH = 8;
   protected Salt salt;
@@ -61,7 +61,7 @@ public class PrivDES extends PrivacyGeneric {
 
   public PrivDES()
   {
-    super.initVectorLength = INIT_VECTOR_LENGTH;
+    super.initArrayListLength = INIT_ArrayList_LENGTH;
     super.protocolId = PROTOCOL_ID;
     super.protocolClass = PROTOCOL_CLASS;
     super.keyBytes = KEY_LENGTH;

@@ -28,7 +28,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Vector;
+import java.util.ArrayList;
 import org.snmp4j.smi.Integer32;
 import org.snmp4j.mp.SnmpConstants;
 import java.io.Serializable;
@@ -203,7 +203,7 @@ public class PDU implements BERSerializable, Serializable {
   public static final int inconsistentName =
       SnmpConstants.SNMP_ERROR_INCONSISTENT_NAME;
 
-  protected Vector<VariableBinding> variableBindings = new Vector<VariableBinding>();
+  protected ArrayList<VariableBinding> variableBindings = new ArrayList<VariableBinding>();
   protected Integer32 errorStatus = new Integer32();
   protected Integer32 errorIndex = new Integer32();
   protected Integer32 requestID = new Integer32();
@@ -222,7 +222,7 @@ public class PDU implements BERSerializable, Serializable {
    *    the {@code PDU} to copy from.
    */
   public PDU(PDU other) {
-    variableBindings = new Vector<VariableBinding>(other.size());
+    variableBindings = new ArrayList<VariableBinding>(other.size());
     for (VariableBinding vb : other.variableBindings) {
       variableBindings.add((VariableBinding) vb.clone());
     }
@@ -247,7 +247,7 @@ public class PDU implements BERSerializable, Serializable {
    */
   public PDU(int pduType, List<? extends VariableBinding> vbs) {
     this.type = pduType;
-    variableBindings = new Vector<VariableBinding>(vbs.size());
+    variableBindings = new ArrayList<VariableBinding>(vbs.size());
     for (VariableBinding vb : vbs) {
       variableBindings.add((VariableBinding) vb.clone());
     }
@@ -414,11 +414,11 @@ public class PDU implements BERSerializable, Serializable {
   }
 
   /**
-   * Gets the variable binding vector.
+   * Gets the variable binding ArrayList.
    * @return
-   *    the internal {@code Vector} containing the PDU's variable bindings.
+   *    the internal {@code ArrayList} containing the PDU's variable bindings.
    */
-  public Vector<? extends VariableBinding> getVariableBindings() {
+  public ArrayList<? extends VariableBinding> getVariableBindings() {
     return variableBindings;
   }
 
@@ -433,7 +433,7 @@ public class PDU implements BERSerializable, Serializable {
     if (vbs == null) {
       throw new NullPointerException();
     }
-    this.variableBindings = new Vector<VariableBinding>(vbs);
+    this.variableBindings = new ArrayList<VariableBinding>(vbs);
   }
 
   /**
@@ -578,7 +578,7 @@ public class PDU implements BERSerializable, Serializable {
     }
     // rest read count
     int startPos = (int)inputStream.getPosition();
-    variableBindings = new Vector<VariableBinding>();
+    variableBindings = new ArrayList<VariableBinding>();
     while (inputStream.getPosition() - startPos < vbLength) {
       VariableBinding vb = new VariableBinding();
       vb.decodeBER(inputStream);

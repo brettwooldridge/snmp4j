@@ -30,7 +30,7 @@ import org.snmp4j.smi.TcpAddress;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
+import java.util.ArrayList;
 import org.snmp4j.log.LogFactory;
 import org.snmp4j.log.LogAdapter;
 
@@ -50,7 +50,7 @@ public abstract class TcpTransportMapping
       LogFactory.getLogger(TcpTransportMapping.class);
 
   protected TcpAddress tcpAddress;
-  private transient Vector<TransportStateListener> transportStateListeners;
+  private transient ArrayList<TransportStateListener> transportStateListeners;
 
   public TcpTransportMapping(TcpAddress tcpAddress) {
     this.tcpAddress = tcpAddress;
@@ -116,7 +116,7 @@ public abstract class TcpTransportMapping
 
   public synchronized void addTransportStateListener(TransportStateListener l) {
     if (transportStateListeners == null) {
-      transportStateListeners = new Vector<TransportStateListener>(2);
+      transportStateListeners = new ArrayList<TransportStateListener>(2);
     }
     transportStateListeners.add(l);
   }

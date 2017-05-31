@@ -330,9 +330,9 @@ public class TableUtils extends AbstractSnmpUtility {
 
     private int sent = 0;
     private boolean anyMatch = false;
-    private Vector<OID> lastSent = null;
+    private ArrayList<OID> lastSent = null;
     private LinkedList<Row> rowCache = new LinkedList<Row>();
-    protected Vector<OID> lastReceived;
+    protected ArrayList<OID> lastReceived;
 
     volatile boolean finished = false;
 
@@ -346,7 +346,7 @@ public class TableUtils extends AbstractSnmpUtility {
       this.columnOIDs = columnOIDs;
       this.listener = listener;
       this.userObject = userObject;
-      this.lastReceived = new Vector<OID>(Arrays.asList(columnOIDs));
+      this.lastReceived = new ArrayList<OID>(Arrays.asList(columnOIDs));
       this.upperBoundIndex = upperBoundIndex;
       this.lowerBoundIndex = lowerBoundIndex;
       if (lowerBoundIndex != null) {
@@ -380,7 +380,7 @@ public class TableUtils extends AbstractSnmpUtility {
           pdu.setMaxRepetitions(0);
         }
       }
-      lastSent = new Vector<OID>(sz + 1);
+      lastSent = new ArrayList<OID>(sz + 1);
       List<Integer> sentColumns = new ArrayList<Integer>(sz);
       int chunkSize = 0;
       for (int i = sent; i < sent + sz; i++) {
@@ -792,7 +792,7 @@ public class TableUtils extends AbstractSnmpUtility {
     return null;
   }
 
-  class Row extends Vector<VariableBinding> {
+  class Row extends ArrayList<VariableBinding> {
 
     private static final long serialVersionUID = -2297277440117636627L;
 

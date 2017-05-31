@@ -52,7 +52,7 @@ public class Priv3DES extends PrivacyGeneric {
   private static final String PROTOCOL_ID = "DESede/CBC/NoPadding";
   private static final String PROTOCOL_CLASS = "DESede";
   private static final int DECRYPT_PARAMS_LENGTH = 8;
-  private static final int INIT_VECTOR_LENGTH = 8;
+  private static final int INIT_ArrayList_LENGTH = 8;
   private static final int INPUT_KEY_LENGTH = 32;
   private static final int KEY_LENGTH = 24;
   protected Salt salt;
@@ -61,7 +61,7 @@ public class Priv3DES extends PrivacyGeneric {
 
   public Priv3DES()
   {
-    super.initVectorLength = INIT_VECTOR_LENGTH;
+    super.initArrayListLength = INIT_ArrayList_LENGTH;
     super.protocolId = PROTOCOL_ID;
     super.protocolClass = PROTOCOL_CLASS;
     super.keyBytes = KEY_LENGTH;
@@ -102,7 +102,7 @@ public class Priv3DES extends PrivacyGeneric {
       decryptParams.array[7 - i] = (byte) (0xFF & (mySalt >> (8 * i)));
     }
 
-    byte[] iv = new byte[INIT_VECTOR_LENGTH];
+    byte[] iv = new byte[INIT_ArrayList_LENGTH];
 
     // last eight bytes of key xored with decrypt params are used as iv
     if (logger.isDebugEnabled()) {

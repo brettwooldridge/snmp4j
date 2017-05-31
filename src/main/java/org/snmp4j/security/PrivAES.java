@@ -47,7 +47,7 @@ public abstract class PrivAES extends PrivacyGeneric
   private static final String PROTOCOL_ID = "AES/CFB/NoPadding";
   private static final String PROTOCOL_CLASS = "AES";
   private static final int DECRYPT_PARAMS_LENGTH = 8;
-  private static final int INIT_VECTOR_LENGTH = 16;
+  private static final int INIT_ArrayList_LENGTH = 16;
 
   private static final LogAdapter logger = LogFactory.getLogger(PrivAES.class);
   protected Salt salt;
@@ -61,7 +61,7 @@ public abstract class PrivAES extends PrivacyGeneric
    *    if keyBytes is illegal
    */
   public PrivAES(int keyBytes) {
-    super.initVectorLength = INIT_VECTOR_LENGTH;
+    super.initArrayListLength = INIT_ArrayList_LENGTH;
     super.protocolId = PROTOCOL_ID;
     super.protocolClass = PROTOCOL_CLASS;
     if ((keyBytes != 16) && (keyBytes != 24) && (keyBytes != 32)) {
@@ -78,7 +78,7 @@ public abstract class PrivAES extends PrivacyGeneric
                         byte[] encryptionKey, long engineBoots,
                         long engineTime, DecryptParams decryptParams) {
 
-    byte[] initVect = new byte[INIT_VECTOR_LENGTH];
+    byte[] initVect = new byte[INIT_ArrayList_LENGTH];
     long my_salt = salt.getNext();
 
     if (encryptionKey.length != keyBytes) {

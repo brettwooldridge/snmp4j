@@ -33,7 +33,7 @@ import java.util.*;
 public class CounterSupport {
 
   protected static CounterSupport instance = null;
-  private transient Vector<CounterListener> counterListeners;
+  private transient ArrayList<CounterListener> counterListeners;
 
   protected CounterSupport() {
   }
@@ -58,7 +58,7 @@ public class CounterSupport {
    */
   public synchronized void addCounterListener(CounterListener listener) {
     if (counterListeners == null) {
-      counterListeners = new Vector<CounterListener>(2);
+      counterListeners = new ArrayList<CounterListener>(2);
     }
     if (!counterListeners.contains(listener)) {
       counterListeners.add(listener);
