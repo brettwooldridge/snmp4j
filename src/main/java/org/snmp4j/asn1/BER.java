@@ -382,35 +382,36 @@ public class BER {
    *    the BER encoded length of the OID without header and length.
    */
   public static int getOIDLength(int[] value) {
-    int length = 1;
-    if (value.length > 1) {  // for first 2 subids, one sub-id is saved by special encoding
-      length = getSubIDLength((value[0] * 40) + value[1]);
+    if (value.length < 2) {
+      return 1;
     }
+
+    // for first 2 subids, one sub-id is saved by special encoding
+    int length = getSubIDLength((value[0] * 40) + value[1]);
     for (int i = 2; i < value.length; i++) {
       length += getSubIDLength(value[i]);
     }
+
     return length;
   }
 
   private static int getSubIDLength(int subID) {
-    int length;
     long v = subID & 0xFFFFFFFFL;
     if (v < 0x80) { //  7 bits long subid
-      length = 1;
+      return 1;
     }
     else if (v < 0x4000) {  // 14 bits long subid
-      length = 2;
+      return 2;
     }
     else if (v < 0x200000) { // 21 bits long subid
-      length = 3;
+      return 3;
     }
     else if (v < 0x10000000) { // 28 bits long subid
-      length = 4;
+      return 4;
     }
     else {                     // 32 bits long subid
-      length = 5;
+      return 5;
     }
-    return length;
   }
 
   /**

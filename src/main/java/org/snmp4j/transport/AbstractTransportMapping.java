@@ -19,16 +19,13 @@
   _##########################################################################*/
 package org.snmp4j.transport;
 
-import org.snmp4j.TransportMapping;
-import org.snmp4j.MessageDispatcher;
-import java.io.IOException;
-
-import org.snmp4j.TransportStateReference;
-import org.snmp4j.smi.Address;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.snmp4j.*;
+import org.snmp4j.smi.*;
 
 /**
  * The <code>AbstractTransportMapping</code> provides an abstract
@@ -41,7 +38,7 @@ import java.nio.ByteBuffer;
 public abstract class AbstractTransportMapping<A extends Address>
     implements TransportMapping<A> {
 
-  protected List<TransportListener> transportListener = new ArrayList<TransportListener>(1);
+  protected List<TransportListener> transportListener = new CopyOnWriteArrayList<>();
   protected int maxInboundMessageSize = (1 << 16) - 1;
   protected boolean asyncMsgProcessingSupported = true;
 
@@ -53,28 +50,18 @@ public abstract class AbstractTransportMapping<A extends Address>
 
   public synchronized void addTransportListener(TransportListener l) {
     if (!transportListener.contains(l)) {
-      List<TransportListener> tlCopy =
-          new ArrayList<TransportListener>(transportListener);
-      tlCopy.add(l);
-      transportListener = tlCopy;
+      transportListener.add(l);
     }
   }
 
   public synchronized void removeTransportListener(TransportListener l) {
-    if (transportListener != null && transportListener.contains(l)) {
-      List<TransportListener> tlCopy =
-          new ArrayList<TransportListener>(transportListener);
-      tlCopy.remove(l);
-      transportListener = tlCopy;
-    }
+    transportListener.remove(l);
   }
 
   protected void fireProcessMessage(Address address,  ByteBuffer buf,
                                     TransportStateReference tmStateReference) {
-    if (transportListener != null) {
-      for (TransportListener aTransportListener : transportListener) {
-        aTransportListener.processMessage(this, address, buf, tmStateReference);
-      }
+    for (TransportListener aTransportListener : transportListener) {
+      aTransportListener.processMessage(this, address, buf, tmStateReference);
     }
   }
 
