@@ -5,6 +5,12 @@
     <packaging>jar</packaging>
     <version>2.5.6-SNAPSHOT</version>
 
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>9</version>
+    </parent>
+
     <properties>
         <sourceEncoding>UTF-8</sourceEncoding>
         <resourceEncoding>UTF-8</resourceEncoding>
