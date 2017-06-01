@@ -34,7 +34,7 @@ import java.util.EventListener;
  * @author Frank Fock
  * @version 1.0
  */
-public interface CommandResponder extends EventListener {
+public interface CommandResponder extends EventListener, Comparable {
 
   /**
    * Process an incoming request, report or notification PDU.
@@ -45,4 +45,8 @@ public interface CommandResponder extends EventListener {
    */
   void processPdu(CommandResponderEvent event);
 
+  @Override
+  default int compareTo(Object o) {
+    return (this == o) ? 0 : 1;
+  }
 }

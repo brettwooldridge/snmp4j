@@ -21,6 +21,8 @@ package org.snmp4j;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.snmp4j.event.*;
 import org.snmp4j.log.*;
@@ -152,19 +154,19 @@ public class Snmp implements Session, CommandResponder {
    * The {@code pendingRequests} table contains pending requests
    * accessed trough the key {@code PduHandle}
    */
-  private final Map<PduHandle, PendingRequest> pendingRequests = new Hashtable<PduHandle, PendingRequest>(50);
+  private final Map<PduHandle, PendingRequest> pendingRequests = new ConcurrentHashMap<>(50);
 
   /**
    * The {@code asyncRequests} table contains pending requests
    * accessed trough the key userObject
    */
-  private final Map<Object, PduHandle> asyncRequests = new Hashtable<Object, PduHandle>(50);
+  private final Map<Object, PduHandle> asyncRequests = new ConcurrentHashMap<>(50);
 
   // Timer for retrying pending requests
-  private CommonTimer timer;
+  private CommonTimer timer = SNMP4JSettings.getTimerFactory().createTimer();
 
   // Listeners for request and trap PDUs
-  private List<CommandResponder> commandResponderListeners;
+  private Set<CommandResponder> commandResponderListeners = new ConcurrentSkipListSet<>();
 
   private TimeoutModel timeoutModel = new DefaultTimeoutModel();
 
@@ -174,8 +176,8 @@ public class Snmp implements Session, CommandResponder {
   // Default ReportHandler
   private ReportHandler reportHandler = new ReportProcessor();
 
-  private Map<Address,OctetString> contextEngineIDs =
-      Collections.synchronizedMap(new HashMap<Address,OctetString>());
+  private Map<Address,OctetString> contextEngineIDs = new ConcurrentHashMap<>();
+
   private boolean contextEngineIdDiscoveryDisabled;
 
   private CounterSupport counterSupport;
@@ -571,11 +573,7 @@ public class Snmp implements Session, CommandResponder {
     if (notificationDispatcher != null) {
       notificationDispatcher.closeAll();
     }
-    List<PendingRequest> pr;
-    synchronized (pendingRequests) {
-      pr = new ArrayList<PendingRequest>(pendingRequests.values());
-    }
-    for (PendingRequest pending : pr) {
+    for (PendingRequest pending : pendingRequests.values()) {
       pending.cancel();
       ResponseEvent e =
           new ResponseEvent(this, null, pending.pdu, null, pending.userObject,
@@ -944,53 +942,51 @@ public class Snmp implements Session, CommandResponder {
       sendMessage(pdu, target, transport, null);
       return null;
     }
-    if (timer == null) {
-      createPendingTimer();
-    }
+
     final SyncResponseListener syncResponse = new SyncResponseListener();
     PendingRequest retryRequest = null;
-    synchronized (syncResponse) {
-      PduHandle handle = null;
-      PendingRequest request =
-          new PendingRequest(syncResponse, target, pdu, target, transport);
-      request.maxRequestStatus = maxRequestStatus;
-      handle = sendMessage(request.pdu, target, transport, request);
-      long totalTimeout =
-          timeoutModel.getRequestTimeout(target.getRetries(),
-                                         target.getTimeout());
-      long stopTime = System.nanoTime()+totalTimeout*SnmpConstants.MILLISECOND_TO_NANOSECOND;
-      try {
+    PduHandle handle = null;
+    PendingRequest request =
+        new PendingRequest(syncResponse, target, pdu, target, transport);
+    request.maxRequestStatus = maxRequestStatus;
+    handle = sendMessage(request.pdu, target, transport, request);
+    long totalTimeout =
+        timeoutModel.getRequestTimeout(target.getRetries(),
+                                       target.getTimeout());
+    long stopTime = System.nanoTime()+totalTimeout*SnmpConstants.MILLISECOND_TO_NANOSECOND;
+    try {
+      synchronized (syncResponse) {
         while ((syncResponse.getResponse() == null) &&
-               (System.nanoTime() < stopTime)) {
+                (System.nanoTime() < stopTime)) {
           syncResponse.wait(totalTimeout);
         }
-        retryRequest = pendingRequests.remove(handle);
-        if (logger.isDebugEnabled()) {
-          logger.debug("Removed pending request with handle: " + handle);
-        }
-        request.setFinished();
-        request.cancel();
       }
-      catch (InterruptedException iex) {
-        logger.warn(iex);
-        // cleanup request
-        request.setFinished();
-        request.cancel();
+      retryRequest = pendingRequests.remove(handle);
+      if (logger.isDebugEnabled()) {
+        logger.debug("Removed pending request with handle: " + handle);
+      }
+      request.setFinished();
+      request.cancel();
+    }
+    catch (InterruptedException iex) {
+      logger.warn(iex);
+      // cleanup request
+      request.setFinished();
+      request.cancel();
+      retryRequest = pendingRequests.remove(handle);
+      if (retryRequest != null) {
+        retryRequest.setFinished();
+        retryRequest.cancel();
+      }
+      Thread.currentThread().interrupt();
+    }
+    finally {
+      if (!request.finished) {
+        // free resources
         retryRequest = pendingRequests.remove(handle);
         if (retryRequest != null) {
           retryRequest.setFinished();
           retryRequest.cancel();
-        }
-        Thread.currentThread().interrupt();
-      }
-      finally {
-        if (!request.finished) {
-          // free resources
-          retryRequest = pendingRequests.remove(handle);
-          if (retryRequest != null) {
-            retryRequest.setFinished();
-            retryRequest.cancel();
-          }
         }
       }
     }
@@ -1003,12 +999,6 @@ public class Snmp implements Session, CommandResponder {
           new ResponseEvent(Snmp.this, null, pdu, null, null);
     }
     return syncResponse.response;
-  }
-
-  private synchronized void createPendingTimer() {
-    if (timer == null) {
-      timer = SNMP4JSettings.getTimerFactory().createTimer();
-    }
   }
 
   public void send(PDU pdu, Target target,
@@ -1024,9 +1014,6 @@ public class Snmp implements Session, CommandResponder {
     if (!pdu.isConfirmedPdu()) {
       sendMessage(pdu, target, transport, null);
       return;
-    }
-    if (timer == null) {
-      createPendingTimer();
     }
     PendingRequest request =
         new AsyncPendingRequest(listener, userHandle, pdu, target, transport);
@@ -1081,12 +1068,12 @@ public class Snmp implements Session, CommandResponder {
   public void cancel(PDU request, ResponseListener listener) {
     AsyncRequestKey key = new AsyncRequestKey(request, listener);
     PduHandle pending = asyncRequests.remove(key);
-    if (logger.isDebugEnabled()) {
-      logger.debug("Cancelling pending request with handle " + pending);
-    }
     if (pending != null) {
-      PendingRequest pendingRequest =
-              pendingRequests.remove(pending);
+      if (logger.isDebugEnabled()) {
+        logger.debug("Cancelling pending request with handle " + pending);
+      }
+
+      PendingRequest pendingRequest = pendingRequests.remove(pending);
       if (pendingRequest != null) {
         synchronized (pendingRequest) {
           pendingRequest.setFinished();
@@ -1232,6 +1219,7 @@ public class Snmp implements Session, CommandResponder {
    */
   public void processPdu(CommandResponderEvent event) {
     PduHandle handle = event.getPduHandle();
+
     if ((SNMP4JSettings.getSnmp4jStatistics() == SNMP4JSettings.Snmp4jStatistics.extended) &&
         (handle instanceof RequestStatistics)) {
       RequestStatistics requestStatistics = (RequestStatistics)handle;
@@ -1242,6 +1230,7 @@ public class Snmp implements Session, CommandResponder {
               requestStatistics.getResponseRuntimeNanos());
       counterSupport.fireIncrementCounter(counterEvent);
     }
+
     PDU pdu = event.getPDU();
     if (pdu.getType() == PDU.REPORT) {
       event.setProcessed(true);
@@ -1253,12 +1242,12 @@ public class Snmp implements Session, CommandResponder {
       if (logger.isDebugEnabled()) {
         logger.debug("Looking up pending request with handle " + handle);
       }
-      synchronized (pendingRequests) {
-        request = pendingRequests.get(handle);
-        if (request != null) {
-          request.responseReceived();
-        }
+
+      request = pendingRequests.get(handle);
+      if (request != null) {
+        request.responseReceived();
       }
+
       if (request == null) {
         if (logger.isWarnEnabled()) {
           logger.warn("Received response that cannot be matched to any " +
@@ -1312,24 +1301,22 @@ public class Snmp implements Session, CommandResponder {
   protected boolean resendRequest(PendingRequest request, PDU response) {
     if (request.useNextPDU()) {
       request.responseReceived = false;
-      synchronized (pendingRequests) {
-        pendingRequests.remove(request.key);
-        PduHandle holdKeyUntilResendDone = request.key;
-        request.key = null;
-        handleInternalResponse(response, request.pdu, request.target.getAddress());
-        try {
-          sendMessage(request.pdu, request.target, request.transport, request);
-        }
-        catch (IOException e) {
-          logger.error("IOException while resending request after RFC 5343 context engine ID discovery: " +
-              e.getMessage(), e);
-        }
-        // now the previous retry can be released
-        if (logger.isDebugEnabled()) {
-          logger.debug("Releasing PDU handle "+holdKeyUntilResendDone);
-        }
-        holdKeyUntilResendDone = null;
+      pendingRequests.remove(request.key);
+      PduHandle holdKeyUntilResendDone = request.key;
+      request.key = null;
+      handleInternalResponse(response, request.pdu, request.target.getAddress());
+      try {
+        sendMessage(request.pdu, request.target, request.transport, request);
       }
+      catch (IOException e) {
+        logger.error("IOException while resending request after RFC 5343 context engine ID discovery: " +
+            e.getMessage(), e);
+      }
+      // now the previous retry can be released
+      if (logger.isDebugEnabled()) {
+        logger.debug("Releasing PDU handle "+holdKeyUntilResendDone);
+      }
+      holdKeyUntilResendDone = null;
       return true;
     }
     return false;
@@ -1472,13 +1459,8 @@ public class Snmp implements Session, CommandResponder {
    * @param listener
    *    a previously added <code>CommandResponder</code> instance.
    */
-  public synchronized void removeCommandResponder(CommandResponder listener) {
-    if (commandResponderListeners != null &&
-        commandResponderListeners.contains(listener)) {
-      ArrayList<CommandResponder> v = new ArrayList<CommandResponder>(commandResponderListeners);
-      v.remove(listener);
-      commandResponderListeners = v;
-    }
+  public void removeCommandResponder(CommandResponder listener) {
+    commandResponderListeners.remove(listener);
   }
 
   /**
@@ -1490,13 +1472,9 @@ public class Snmp implements Session, CommandResponder {
    * @param listener
    *    the <code>CommandResponder</code> instance to be added.
    */
-  public synchronized void addCommandResponder(CommandResponder listener) {
-    ArrayList<CommandResponder> v = (commandResponderListeners == null) ?
-        new ArrayList<CommandResponder>(2) :
-        new ArrayList<CommandResponder>(commandResponderListeners);
-    if (!v.contains(listener)) {
-      v.add(listener);
-      commandResponderListeners = v;
+  public void addCommandResponder(CommandResponder listener) {
+    if (!commandResponderListeners.contains(listener)) {
+      commandResponderListeners.add(listener);
     }
   }
 
@@ -1508,15 +1486,12 @@ public class Snmp implements Session, CommandResponder {
    *    a <code>CommandResponderEvent</code>.
    */
   protected void fireProcessPdu(CommandResponderEvent event) {
-    if (commandResponderListeners != null) {
-      List<CommandResponder> listeners = commandResponderListeners;
-      for (CommandResponder listener : listeners) {
-        listener.processPdu(event);
-        // if event is marked as processed the event is not forwarded to
-        // remaining listeners
-        if (event.isProcessed()) {
-          return;
-        }
+    for (CommandResponder listener : commandResponderListeners) {
+      listener.processPdu(event);
+      // if event is marked as processed the event is not forwarded to
+      // remaining listeners
+      if (event.isProcessed()) {
+        return;
       }
     }
   }
@@ -1768,7 +1743,7 @@ public class Snmp implements Session, CommandResponder {
       return super.clone();
     }
 
-    public synchronized void pduHandleAssigned(PduHandle handle, PDU pdu) {
+    public void pduHandleAssigned(PduHandle handle, PDU pdu) {
       if (key == null) {
         key = handle;
         // get pointer to target before adding request to pending list
@@ -1811,7 +1786,7 @@ public class Snmp implements Session, CommandResponder {
     /**
      * Process retries of a pending request.
      */
-    public synchronized void run() {
+    public void run() {
       PduHandle m_key = key;
       PDU m_pdu = pdu;
       Target m_target = target;
@@ -1830,10 +1805,8 @@ public class Snmp implements Session, CommandResponder {
       }
 
       try {
-        synchronized (pendingRequests) {
-          this.pendingRetry =
-              (!finished) && (retryCount > 0) && (!responseReceived);
-        }
+        this.pendingRetry =
+            (!finished) && (retryCount > 0) && (!responseReceived);
         if (this.pendingRetry) {
           try {
             PendingRequest nextRetry = new PendingRequest(this);
@@ -2021,8 +1994,8 @@ public class Snmp implements Session, CommandResponder {
   class NotificationDispatcher implements CommandResponder {
     // A mapping of transport addresses to transport mappings of notification
     // listeners
-    private Hashtable<Address, TransportMapping> notificationListeners = new Hashtable<Address, TransportMapping>(10);
-    private Hashtable<TransportMapping, CommandResponder> notificationTransports = new Hashtable<TransportMapping, CommandResponder>(10);
+    private Map<Address, TransportMapping> notificationListeners = new ConcurrentHashMap<Address, TransportMapping>(10);
+    private Map<TransportMapping, CommandResponder> notificationTransports = new ConcurrentHashMap<>(10);
 
     protected NotificationDispatcher() {
     }
@@ -2031,18 +2004,16 @@ public class Snmp implements Session, CommandResponder {
       return notificationListeners.get(listenAddress);
     }
 
-    public synchronized void addNotificationListener(Address listenAddress,
+    public void addNotificationListener(Address listenAddress,
                                                      TransportMapping transport,
                                                      CommandResponder listener){
       notificationListeners.put(listenAddress, transport);
       notificationTransports.put(transport, listener);
     }
 
-    public synchronized boolean
-        removeNotificationListener(Address listenAddress)
+    public boolean removeNotificationListener(Address listenAddress)
     {
-      TransportMapping tm =
-              notificationListeners.remove(listenAddress);
+      TransportMapping tm = notificationListeners.remove(listenAddress);
       if (tm == null) {
         return false;
       }
@@ -2053,7 +2024,7 @@ public class Snmp implements Session, CommandResponder {
       return true;
     }
 
-    public synchronized void closeAll() {
+    public void closeAll() {
       notificationTransports.clear();
       for (TransportMapping tm : notificationListeners.values()) {
         closeTransportMapping(tm);
@@ -2062,10 +2033,6 @@ public class Snmp implements Session, CommandResponder {
     }
 
     public void processPdu(CommandResponderEvent event) {
-      CommandResponder listener;
-      synchronized (this) {
-        listener = notificationTransports.get(event.getTransportMapping());
-      }
       if ((event.getPDU() != null) &&
           (event.getPDU().getType() == PDU.INFORM)) {
         // try to send INFORM response
@@ -2079,6 +2046,8 @@ public class Snmp implements Session, CommandResponder {
           }
         }
       }
+
+      CommandResponder listener = notificationTransports.get(event.getTransportMapping());
       if (listener != null) {
         listener.processPdu(event);
       }

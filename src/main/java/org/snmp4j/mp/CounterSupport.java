@@ -21,8 +21,10 @@
 
 package org.snmp4j.mp;
 
-import org.snmp4j.event.*;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.snmp4j.event.*;
 
 /**
  * The <code>CounterSupport</code> class provides support to fire
@@ -33,7 +35,7 @@ import java.util.*;
 public class CounterSupport {
 
   protected static CounterSupport instance = null;
-  private transient ArrayList<CounterListener> counterListeners;
+  private transient List<CounterListener> counterListeners = new CopyOnWriteArrayList<>();
 
   protected CounterSupport() {
   }
@@ -56,10 +58,7 @@ public class CounterSupport {
    *    a <code>CounterListener</code> instance that needs to be informed when
    *    a counter needs to be incremented.
    */
-  public synchronized void addCounterListener(CounterListener listener) {
-    if (counterListeners == null) {
-      counterListeners = new ArrayList<CounterListener>(2);
-    }
+  public void addCounterListener(CounterListener listener) {
     if (!counterListeners.contains(listener)) {
       counterListeners.add(listener);
     }
@@ -70,10 +69,8 @@ public class CounterSupport {
    * @param listener
    *    a <code>CounterListener</code> instance.
    */
-  public synchronized void removeCounterListener(CounterListener listener) {
-    if (counterListeners != null && counterListeners.contains(listener)) {
-      counterListeners.removeElement(listener);
-    }
+  public void removeCounterListener(CounterListener listener) {
+    counterListeners.remove(listener);
   }
 
   /**
@@ -84,10 +81,8 @@ public class CounterSupport {
    *    be incremented.
    */
   public void fireIncrementCounter(CounterEvent event) {
-    if (counterListeners != null) {
-      for (CounterListener l: counterListeners) {
-        l.incrementCounter(event);
-      }
+    for (CounterListener l: counterListeners) {
+      l.incrementCounter(event);
     }
   }
 }

@@ -19,20 +19,35 @@
   _##########################################################################*/
 package org.snmp4j;
 
-import java.io.IOException;
-import java.util.*;
-
-import org.snmp4j.asn1.*;
-import org.snmp4j.event.*;
-import org.snmp4j.log.*;
+import org.snmp4j.asn1.BER;
+import org.snmp4j.asn1.BERInputStream;
+import org.snmp4j.asn1.BEROutputStream;
+import org.snmp4j.event.AuthenticationFailureEvent;
+import org.snmp4j.event.AuthenticationFailureListener;
+import org.snmp4j.event.CounterEvent;
+import org.snmp4j.event.CounterListener;
+import org.snmp4j.log.LogAdapter;
+import org.snmp4j.log.LogFactory;
 import org.snmp4j.mp.*;
 import org.snmp4j.security.SecurityLevel;
 import org.snmp4j.security.TsmSecurityStateReference;
-import org.snmp4j.smi.*;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import org.snmp4j.smi.Address;
+import org.snmp4j.smi.GenericAddress;
+import org.snmp4j.smi.Integer32;
+import org.snmp4j.smi.OctetString;
 import org.snmp4j.transport.UnsupportedAddressClassException;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * The {@code MessageDispatcherImpl} decodes and dispatches incoming
@@ -61,7 +76,7 @@ public class MessageDispatcherImpl implements MessageDispatcher {
 
   private List<MessageProcessingModel> mpm = new ArrayList<MessageProcessingModel>(3);
   private Map<Class<? extends Address>, List<TransportMapping>> transportMappings =
-      new Hashtable<Class<? extends Address>, List<TransportMapping>>(5);
+      new ConcurrentHashMap<>(5);
 
   private AtomicInteger nextTransactionID = new AtomicInteger(new Random().nextInt(Integer.MAX_VALUE-2)+1);
   private transient List<CommandResponder> commandResponderListeners;
@@ -115,13 +130,9 @@ public class MessageDispatcherImpl implements MessageDispatcher {
    *    without specific transport mapping.
    */
   @SuppressWarnings("unchecked")
-  public synchronized void addTransportMapping(TransportMapping transport) {
+  public void addTransportMapping(TransportMapping transport) {
     List<TransportMapping> transports =
-            transportMappings.get(transport.getSupportedAddressClass());
-    if (transports == null) {
-      transports = new LinkedList<TransportMapping>();
-      transportMappings.put(transport.getSupportedAddressClass(), transports);
-    }
+            transportMappings.computeIfAbsent(transport.getSupportedAddressClass(), k -> new LinkedList<TransportMapping>());
     transports.add(transport);
   }
 
@@ -150,13 +161,11 @@ public class MessageDispatcherImpl implements MessageDispatcher {
    *    a Collection instance.
    */
   public Collection<TransportMapping> getTransportMappings() {
-    ArrayList<TransportMapping> l = new ArrayList<TransportMapping>(transportMappings.size());
-    synchronized (transportMappings) {
-      for (List<TransportMapping> tm : transportMappings.values()) {
-        l.addAll(tm);
-      }
-    }
-    return l;
+    return transportMappings
+      .values()
+      .stream()
+      .flatMap(Collection::stream)
+      .collect(Collectors.toList());
   }
 
   public int getNextRequestID() {

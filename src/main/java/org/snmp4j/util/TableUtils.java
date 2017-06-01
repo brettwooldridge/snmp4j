@@ -112,16 +112,14 @@ public class TableUtils extends AbstractSnmpUtility {
                                           null,
                                           lowerBoundIndex,
                                           upperBoundIndex);
-    synchronized (listener) {
-      if (req.sendNextChunk()) {
-        try {
-          while (!listener.isFinished()) {
-            listener.wait();
-          }
+    if (req.sendNextChunk()) {
+      try {
+        while (!listener.isFinished()) {
+          listener.wait();
         }
-        catch (InterruptedException ex) {
-          Thread.currentThread().interrupt();
-        }
+      }
+      catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
       }
     }
     return listener.getRows();
@@ -596,7 +594,7 @@ public class TableUtils extends AbstractSnmpUtility {
       Row r = rowCache.removeFirst();
       r.setNumComplete(columnOIDs.length);
       VariableBinding[] vbs = new VariableBinding[r.size()];
-      r.copyInto(vbs);
+      r.toArray(vbs);
       return new TableEvent(this, userObject, r.getRowIndex(), vbs);
     }
 
